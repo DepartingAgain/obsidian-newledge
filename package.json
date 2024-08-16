@@ -1,18 +1,21 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidian-newledge",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "新枝Newledge 的 Obsidian 插件",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
-		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production && ./bin/package.sh",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
 	"keywords": [],
 	"author": "",
 	"license": "MIT",
 	"devDependencies": {
+		"@types/ejs": "^3.1.5",
 		"@types/node": "^16.11.6",
+		"@types/qrcode": "^1.5.5",
+		"@types/uuid": "^10.0.0",
 		"@typescript-eslint/eslint-plugin": "5.29.0",
 		"@typescript-eslint/parser": "5.29.0",
 		"builtin-modules": "3.3.0",
@@ -20,5 +23,11 @@
 		"obsidian": "latest",
 		"tslib": "2.4.0",
 		"typescript": "4.7.4"
+	},
+	"dependencies": {
+		"ejs": "^3.1.10",
+		"jwt-decode": "^4.0.0",
+		"qrcode": "^1.5.4",
+		"uuid": "^10.0.0"
 	}
 }
