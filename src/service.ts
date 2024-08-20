@@ -10,6 +10,7 @@ export interface SessionIdResponse {
 
 export interface LoginStatus {
 	status: boolean;
+	invalidSessionId: boolean;
 	id: string | null;
 	name: string | null;
 	avatar: string | null;
@@ -128,6 +129,7 @@ async function request(
 		headers.set("X-Obsidian-Token", token);
 	}
 	headers.set("Content-Type", "application/json");
+	headers.set("X-Client", "Obsidian");
 
 	const options: RequestInit = {
 		method,

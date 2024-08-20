@@ -246,6 +246,7 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 						window.clearInterval(intervalId);
 						resolve({
 							qrCodeExpired: true,
+							invalidSessionId: true,
 							status: false,
 							id: null,
 							name: null,
@@ -257,6 +258,19 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 
 					try {
 						const loginStatus = await getLoginStatus(sessionId);
+						if (loginStatus.invalidSessionId) {
+							window.clearInterval(intervalId);
+							resolve({
+								qrCodeExpired: true,
+								invalidSessionId: true,
+								status: false,
+								id: null,
+								name: null,
+								avatar: null,
+								token: null,
+							});
+							return;
+						}
 						if (loginStatus.status && loginStatus.token) {
 							window.clearInterval(intervalId);
 							resolve(loginStatus);
