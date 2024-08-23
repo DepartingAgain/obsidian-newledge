@@ -1,4 +1,4 @@
-import { Notice } from "obsidian";
+import { Notice, requestUrl, RequestUrlParam } from "obsidian";
 
 const domain = "https://api.xinzhi.zone";
 
@@ -124,37 +124,38 @@ async function request(
 	token?: string,
 	body?: any
 ) {
-	const headers = new Headers();
+	const headers: Record<string, string> = {};
 	if (token) {
-		headers.set("X-Obsidian-Token", token);
+		headers["X-Obsidian-Token"] = token;
 	}
-	headers.set("Content-Type", "application/json");
-	headers.set("X-Client", "Obsidian");
+	headers["X-Client"] = "Obsidian";
 
-	const options: RequestInit = {
+	const options: RequestUrlParam = {
 		method,
+		contentType: "application/json",
 		headers,
 		body: body ? JSON.stringify(body) : undefined,
+		url,
 	};
 
 	let response;
 	try {
-		response = await fetch(url, options);
+		response = await requestUrl(options);
 	} catch (error) {
 		new Notice("新枝: 服务异常");
 		throw error;
 	}
 
-	if (!response.ok) {
+	if (response.status !== 200) {
 		new Notice("新枝: 服务异常");
-		throw new Error(response.statusText + " " + response.status);
+		throw new Error(response.status + " " + response.text);
 	}
 
-	const data = await response.json();
+	const responseJson = response.json;
 
-	if (data.code === 5000) {
-		throw new Error(JSON.stringify(data));
+	if (responseJson.code !== 1001) {
+		throw new Error(JSON.stringify(responseJson));
 	}
 
-	return data.data;
+	return responseJson.data;
 }
