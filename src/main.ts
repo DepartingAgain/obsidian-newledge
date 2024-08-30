@@ -272,32 +272,34 @@ export default class Newledge extends Plugin {
 				};
 			}
 
-			const title = normalizePath(noteTitle);
+			const normalizedTitle = this._normalizeTitle(noteTitle);
 
 			let fileName = "";
 			if (superType === "SUPER_LINK") {
-				const dir = `${rootDir}/${linkDir}/${title}`;
+				const dir = `${rootDir}/${linkDir}/${normalizedTitle}`;
 				if (!(await adapter.exists(dir))) {
 					await adapter.mkdir(dir);
 				}
-				fileName = await this._getFileName(`${dir}/${title}`);
+				fileName = await this._getFileName(`${dir}/${normalizedTitle}`);
 			} else if (superType === "SUPER_RICH_TEXT") {
 				if (
 					(noteType === "HIGHLIGHT" || noteType === "ANNOTATION") &&
 					relatedContentTitle &&
 					relatedContentSuperType === "SUPER_LINK"
 				) {
-					const relatedContentDir = `${rootDir}/${linkDir}/${relatedContentTitle}`;
+					const normalizedRelatedContentTitle =
+						this._normalizeTitle(relatedContentTitle);
+					const relatedContentDir = `${rootDir}/${linkDir}/${normalizedRelatedContentTitle}`;
 					if (!(await adapter.exists(relatedContentDir))) {
 						await adapter.mkdir(relatedContentDir);
 					}
 
 					fileName = await this._getFileName(
-						`${relatedContentDir}/${title}`
+						`${relatedContentDir}/${normalizedTitle}`
 					);
 				} else {
 					fileName = await this._getFileName(
-						`${rootDir}/${richTextDir}/${title}`
+						`${rootDir}/${richTextDir}/${normalizedTitle}`
 					);
 				}
 			}
@@ -334,6 +336,31 @@ export default class Newledge extends Plugin {
 			}
 			throw error;
 		}
+	}
+
+	private _normalizeTitle(title: string) {
+		let sanitized = title
+			// 移除控制字符
+			.replace(/[\x00-\x1F\x7F-\x9F]/g, "")
+			// 替换Windows不允许的字符
+			.replace(/[<>:"\/\\|?*]/g, "_")
+			// 将多个空格替换为单个空格
+			.replace(/\s+/g, " ")
+			// 移除首尾空格
+			.trim();
+
+		// 限制文件名长度
+		const MAX_LENGTH = 100;
+		if (sanitized.length > MAX_LENGTH) {
+			sanitized = sanitized.slice(0, MAX_LENGTH);
+		}
+
+		// 确保文件名不为空
+		if (sanitized.length === 0) {
+			sanitized = "暂无标题";
+		}
+
+		return normalizePath(sanitized);
 	}
 
 	private async _getFileName(name: string) {
