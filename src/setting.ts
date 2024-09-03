@@ -53,7 +53,6 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 	async display(): Promise<void> {
 		const { containerEl } = this;
 		containerEl.empty();
-		containerEl.createEl("h1", { text: "新枝Newledge" });
 
 		const { valid: accountValid, failedTaskCount } =
 			await this.plugin.checkAccount();
