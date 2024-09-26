@@ -99,7 +99,7 @@ export async function syncFailed(
 }
 
 export async function unbind(token: string): Promise<void> {
-	await request("DELETE", `${urlPrefix}`, token);
+	await request("DELETE", `${urlPrefix}/unbind`, token);
 }
 
 export async function getIntegration(
