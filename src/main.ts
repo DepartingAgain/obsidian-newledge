@@ -85,7 +85,7 @@ export default class Newledge extends Plugin {
 					}, minute)
 				);
 			}
-		} catch (_error) {
+		} catch {
 			// doNothing
 		}
 	}
@@ -122,7 +122,7 @@ export default class Newledge extends Plugin {
 				);
 				integrationValid = integrationValidResponse.valid;
 				failedTaskCount = integrationValidResponse.failedTaskCount;
-			} catch (_error) {
+			} catch {
 				return {
 					valid: false,
 					failedTaskCount: 0,
@@ -211,7 +211,7 @@ export default class Newledge extends Plugin {
 						} else {
 							break;
 						}
-					} catch (_error) {
+					} catch {
 						failedCount++;
 					} finally {
 						await sleep(3000);
@@ -232,7 +232,7 @@ export default class Newledge extends Plugin {
 
 				new Notice(message);
 			}
-		} catch (_error) {
+		} catch {
 			new Notice("新枝: 同步失败, 请稍后重试");
 		}
 
@@ -349,7 +349,7 @@ export default class Newledge extends Plugin {
 
 			try {
 				await syncSuccess(id, token);
-			} catch (_error) {
+			} catch {
 				// doNothing
 			}
 
@@ -361,7 +361,7 @@ export default class Newledge extends Plugin {
 		} catch (error) {
 			try {
 				await syncFailed(id, token, error.toString());
-			} catch (_error) {
+			} catch {
 				// doNothing
 			}
 			throw error;
@@ -465,7 +465,7 @@ export default class Newledge extends Plugin {
 			if (sinceLastSyncMillisecond >= syncIntervalMillisecond) {
 				await this.sync();
 			}
-		} catch (_error) {
+		} catch {
 			// doNothing
 		}
 	}

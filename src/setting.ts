@@ -74,7 +74,7 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 		let sessionId = "";
 		try {
 			sessionId = await this._getSessionId();
-		} catch (_error) {
+		} catch {
 			// 极端情况，此时用户需要重新启用插件
 			return;
 		}
@@ -128,7 +128,7 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 			const sessionId = await this._getSessionId();
 			qrCodeValueDom.remove();
 			await this.renderQrCodeSetting(sessionId, qrCodeSetting);
-		} catch (_error) {
+		} catch {
 			new Notice("新枝: 出错啦, 请稍后重试");
 		}
 	}
@@ -214,7 +214,7 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 	private async unbindAccount(token: string): Promise<void> {
 		try {
 			await unbind(token);
-		} catch (_error) {
+		} catch {
 			new Notice("新枝: 出错啦, 请稍后重试");
 			return;
 		}
@@ -249,7 +249,7 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 	): Promise<void> {
 		try {
 			await retry(token);
-		} catch (_error) {
+		} catch {
 			new Notice("新枝: 出错啦, 请稍后重试");
 			return;
 		}
@@ -326,7 +326,7 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 							resolve(loginStatus);
 							return;
 						}
-					} catch (_error) {
+					} catch {
 						// doNothing
 					}
 

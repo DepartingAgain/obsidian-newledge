@@ -1,53 +1,75 @@
-import ejs from "ejs";
+type PropertyValue = string | string[];
+type PropertyData = Record<string, PropertyValue>;
 
-const richTextPropertyTemplate = `---
-<% if (typeof relatedContent !== 'undefined' && relatedContent !== null && relatedContent.trim() !== '') { -%>
-关联内容: "[[<%= relatedContent %>]]"
-<% } -%>
-创建时间: "<%= createTime %>"
-关联日记: "[[<%= relatedDiary %>]]"
-tags:
-<% obsidianTagList.forEach(function(tag){ -%>
-  - <%= tag %>
-<% }); -%>
----`;
+function asString(value: PropertyValue | undefined): string {
+	if (Array.isArray(value)) {
+		return value.join(", ");
+	}
 
-const linkPropertyTemplate = `---
-作者:
-<% authorList.forEach(function(author){ -%>
-  - "<%= author %>"
-<% }); -%>
-原文链接: <%= link %>
-发布时间: "<%= publishTime %>"
-收藏时间: "<%= collectTime %>"
-关联日记: "[[<%= relatedDiary %>]]"
-tags:
-<% obsidianTagList.forEach(function(tag){ -%>
-  - <%= tag %>
-<% }); -%>
----`;
-
-const textTemplate = `<%- propertiesText %><% text.forEach(function(block){ %>
-<%- block %>
-<% }); %>
-<% if (tagList && tagList.length > 0) { %>
-新枝标签： <% tagList.forEach(function(tag, index){ %>#<%= tag %><%= index < tagList.length - 1 ? ' ' : '' %><% }); %>
-<% } %>`;
-
-export function renderRichTextProperty(
-	data: Record<string, string[] | string>
-) {
-	return ejs.render(richTextPropertyTemplate, data);
+	return value ?? "";
 }
 
-export function renderLinkProperty(data: Record<string, string[] | string>) {
-	return ejs.render(linkPropertyTemplate, data);
+function asStringList(value: PropertyValue | undefined): string[] {
+	if (Array.isArray(value)) {
+		return value;
+	}
+
+	return value ? [value] : [];
+}
+
+function renderTagList(tags: string[]): string {
+	return tags.map((tag) => `  - ${tag}`).join("\n");
+}
+
+export function renderRichTextProperty(data: PropertyData): string {
+	const relatedContent = asString(data.relatedContent).trim();
+	const lines = ["---"];
+
+	if (relatedContent) {
+		lines.push(`关联内容: "[[${relatedContent}]]"`);
+	}
+
+	lines.push(`创建时间: "${asString(data.createTime)}"`);
+	lines.push(`关联日记: "[[${asString(data.relatedDiary)}]]"`);
+	lines.push("tags:");
+	lines.push(renderTagList(asStringList(data.obsidianTagList)));
+	lines.push("---");
+
+	return lines.join("\n");
+}
+
+export function renderLinkProperty(data: PropertyData): string {
+	const lines = ["---", "作者:"];
+
+	for (const author of asStringList(data.authorList)) {
+		lines.push(`  - "${author}"`);
+	}
+
+	lines.push(`原文链接: ${asString(data.link)}`);
+	lines.push(`发布时间: "${asString(data.publishTime)}"`);
+	lines.push(`收藏时间: "${asString(data.collectTime)}"`);
+	lines.push(`关联日记: "[[${asString(data.relatedDiary)}]]"`);
+	lines.push("tags:");
+	lines.push(renderTagList(asStringList(data.obsidianTagList)));
+	lines.push("---");
+
+	return lines.join("\n");
 }
 
 export function renderText(data: {
 	propertiesText: string;
 	text: string[];
 	tagList: string[];
-}) {
-	return ejs.render(textTemplate, data);
+}): string {
+	const lines = [data.propertiesText, ...data.text, ""];
+
+	if (data.tagList.length > 0) {
+		lines.push(
+			`新枝标签： ${data.tagList
+				.map((tag) => `#${tag}`)
+				.join(" ")}`
+		);
+	}
+
+	return lines.join("\n");
 }

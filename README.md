@@ -1,4 +1,4 @@
-# Obsidian-Newledge
+# Newledge (Xinzhi)
 
 [新枝](https://www.xinzhi.zone) 提供的 Obsidian 插件，支持同步新枝数据到 Obsidian 中。
 
