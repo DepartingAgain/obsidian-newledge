@@ -1,9 +1,9 @@
 {
 	"id": "newledge",
-	"name": "新枝Newledge",
-	"version": "1.0.4",
-	"minAppVersion": "0.15.0",
-	"description": "Import Newledge data.",
+	"name": "Newledge (Xinzhi)",
+	"version": "1.0.5",
+	"minAppVersion": "1.2.3",
+	"description": "新枝 Newledge (Xinzhi) plugin for Obsidian, import Newledge data.",
 	"author": "新枝Newledge",
 	"authorUrl": "https://www.xinzhi.zone",
 	"isDesktopOnly": true

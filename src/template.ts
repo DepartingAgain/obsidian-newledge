@@ -1,4 +1,4 @@
-import * as ejs from "ejs";
+import ejs from "ejs";
 
 const richTextPropertyTemplate = `---
 <% if (typeof relatedContent !== 'undefined' && relatedContent !== null && relatedContent.trim() !== '') { -%>

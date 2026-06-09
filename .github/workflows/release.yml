@@ -5,6 +5,12 @@ on:
         tags:
             - "*"
 
+permissions:
+    contents: write
+    id-token: write
+    attestations: write
+    artifact-metadata: write
+
 jobs:
     build:
         runs-on: ubuntu-latest
@@ -19,8 +25,16 @@ jobs:
 
             - name: Build plugin
               run: |
-                  npm install
+                  npm ci
                   npm run build
+
+            - name: Generate artifact attestations
+              uses: actions/attest@v4
+              with:
+                  subject-path: |
+                      main.js
+                      manifest.json
+                      styles.css
 
             - name: Create release
               env:

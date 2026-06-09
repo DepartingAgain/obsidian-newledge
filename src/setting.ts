@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab, Setting, TextComponent } from "obsidian";
 import * as QRCode from "qrcode";
 import Newledge from "./main";
 import {
@@ -50,7 +50,11 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
-	async display(): Promise<void> {
+	display(): void {
+		void this.displayAsync();
+	}
+
+	private async displayAsync(): Promise<void> {
 		const { containerEl } = this;
 		containerEl.empty();
 
@@ -70,7 +74,7 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 		let sessionId = "";
 		try {
 			sessionId = await this._getSessionId();
-		} catch (error) {
+		} catch (_error) {
 			// 极端情况，此时用户需要重新启用插件
 			return;
 		}
@@ -79,32 +83,28 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 			.setName("扫描二维码绑定新枝账户")
 			.setDesc("个人页 > 数据联动 > 同步到 Obsidian 桌面端");
 
-		this.renderQrCodeSetting(sessionId, qrCodeSetting);
+		await this.renderQrCodeSetting(sessionId, qrCodeSetting);
 	}
 
 	async renderQrCodeSetting(sessionId: string, qrCodeSetting: Setting) {
-		const qrCodeValueDom = this._createQrCodeElement(sessionId);
-
-		qrCodeSetting.settingEl.appendChild(qrCodeValueDom);
+		const qrCodeValueDom = this._createQrCodeElement(
+			qrCodeSetting.settingEl,
+			sessionId,
+		);
 
 		const loginResponse = await this._getLoginStatus(sessionId);
 
 		if (loginResponse.qrCodeExpired) {
-			const expiredGuideDom = document.createElement("div");
-			expiredGuideDom.className = "newledge-qrcode-expired-guide";
-			expiredGuideDom.onclick = async () => {
-				qrCodeValueDom.remove();
-				this.renderQrCodeSetting(
-					await this._getSessionId(),
-					qrCodeSetting,
-				);
+			const expiredGuideDom = qrCodeValueDom.createDiv({
+				cls: "newledge-qrcode-expired-guide",
+			});
+			expiredGuideDom.onclick = () => {
+				void this.refreshQrCode(qrCodeValueDom, qrCodeSetting);
 			};
 
-			const expiredTextDom = document.createElement("div");
-			expiredTextDom.setText("二维码已过期\n点击刷新");
-			expiredGuideDom.appendChild(expiredTextDom);
-
-			qrCodeValueDom.appendChild(expiredGuideDom);
+			expiredGuideDom.createDiv({
+				text: "二维码已过期\n点击刷新",
+			});
 		} else if (loginResponse.status && loginResponse.token) {
 			this.plugin.settings.token = loginResponse.token;
 			this.plugin.settings.user = {
@@ -114,9 +114,22 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 			this.plugin.settings.sessionId = sessionId;
 			await this.plugin.saveSettings();
 
-			await this.display();
+			await this.displayAsync();
 
 			await this.plugin.sync();
+		}
+	}
+
+	private async refreshQrCode(
+		qrCodeValueDom: HTMLElement,
+		qrCodeSetting: Setting,
+	): Promise<void> {
+		try {
+			const sessionId = await this._getSessionId();
+			qrCodeValueDom.remove();
+			await this.renderQrCodeSetting(sessionId, qrCodeSetting);
+		} catch (_error) {
+			new Notice("新枝: 出错啦, 请稍后重试");
 		}
 	}
 
@@ -135,20 +148,8 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 				.setButtonText("解绑")
 				.setClass("mod-warning")
 				.setClass("newledge-button")
-				.onClick(async () => {
-					try {
-						await unbind(token);
-					} catch (error) {
-						new Notice("新枝: 出错啦, 请稍后重试");
-						return;
-					}
-
-					this.plugin.settings.token = null;
-					this.plugin.settings.user = null;
-					this.plugin.settings.sessionId = null;
-					await this.plugin.saveSettings();
-
-					this.display();
+				.onClick(() => {
+					void this.unbindAccount(token);
 				});
 		});
 
@@ -157,22 +158,8 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 			.setDesc("设置同步内容的根目录（默认：新枝）")
 			.addText((text) => {
 				text.setPlaceholder("例如：新枝").setValue(currentRootDir);
-				this.plugin.registerDomEvent(text.inputEl, "blur", async () => {
-					const raw = text.getValue().trim();
-					const normalized = this.plugin.getNormalizedRootDir();
-					this.plugin.settings.rootDir = raw;
-					const safeRootDir = this.plugin.getNormalizedRootDir();
-
-					if (safeRootDir !== raw) {
-						new Notice(
-							`新枝: 不支持的路径格式，已恢复为 ${safeRootDir}`,
-						);
-					} else if (safeRootDir !== normalized) {
-						new Notice(`新枝: 同步目录已更新为 ${safeRootDir}`);
-					}
-
-					text.setValue(safeRootDir);
-					await this.plugin.ensureRootDirExists();
+				this.plugin.registerDomEvent(text.inputEl, "blur", () => {
+					void this.updateRootDir(text);
 				});
 				return text;
 			});
@@ -186,9 +173,9 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 					.addOption("720", "12小时")
 					.addOption("1440", "24小时")
 					.setValue(this.plugin.settings.syncInterval.toString())
-					.onChange(async (val) => {
+					.onChange((val) => {
 						this.plugin.settings.syncInterval = parseInt(val, 10);
-						await this.plugin.saveSettings();
+						void this.plugin.saveSettings();
 					}),
 			);
 
@@ -199,13 +186,13 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 				button
 					.setButtonText("立即同步")
 					.setClass("newledge-button")
-					.onClick(async () => {
+					.onClick(() => {
 						if (this.plugin.settings.syncing) {
 							new Notice("新枝: 正在同步中...");
 							return;
 						}
 
-						this.plugin.sync();
+						void this.plugin.sync();
 					});
 			});
 
@@ -217,41 +204,74 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 					button
 						.setButtonText("立即重试")
 						.setClass("newledge-button")
-						.onClick(async () => {
-							try {
-								await retry(token);
-							} catch (error) {
-								new Notice("新枝: 出错啦, 请稍后重试");
-								return;
-							}
-
-							button.setButtonText("重试中...");
-							button.setDisabled(true);
-
-							if (this.plugin.settings.syncing) {
-								new Notice(
-									"新枝: 正在同步中, 将在本次同步完成后重试失败内容",
-								);
-							} else {
-								await this.plugin.sync();
-								containerEl.removeChild(
-									containerEl.children[
-										containerEl.children.length - 1
-									],
-								);
-							}
+						.onClick(() => {
+							void this.retryFailedTasks(token, button.buttonEl);
 						});
 				});
 		}
 	}
 
-	private _createQrCodeElement(sessionId: string) {
-		const qrCodeValueDom = document.createElement("div");
-		qrCodeValueDom.className = "newledge-qrcode-wrapper";
-		const canvas = document.createElement("canvas");
-		qrCodeValueDom.appendChild(canvas);
+	private async unbindAccount(token: string): Promise<void> {
+		try {
+			await unbind(token);
+		} catch (_error) {
+			new Notice("新枝: 出错啦, 请稍后重试");
+			return;
+		}
 
-		QRCode.toCanvas(canvas, sessionId, {
+		this.plugin.settings.token = null;
+		this.plugin.settings.user = null;
+		this.plugin.settings.sessionId = null;
+		await this.plugin.saveSettings();
+
+		await this.displayAsync();
+	}
+
+	private async updateRootDir(text: TextComponent): Promise<void> {
+		const raw = text.getValue().trim();
+		const normalized = this.plugin.getNormalizedRootDir();
+		this.plugin.settings.rootDir = raw;
+		const safeRootDir = this.plugin.getNormalizedRootDir();
+
+		if (safeRootDir !== raw) {
+			new Notice(`新枝: 不支持的路径格式，已恢复为 ${safeRootDir}`);
+		} else if (safeRootDir !== normalized) {
+			new Notice(`新枝: 同步目录已更新为 ${safeRootDir}`);
+		}
+
+		text.setValue(safeRootDir);
+		await this.plugin.ensureRootDirExists();
+	}
+
+	private async retryFailedTasks(
+		token: string,
+		buttonEl: HTMLButtonElement,
+	): Promise<void> {
+		try {
+			await retry(token);
+		} catch (_error) {
+			new Notice("新枝: 出错啦, 请稍后重试");
+			return;
+		}
+
+		buttonEl.setText("重试中...");
+		buttonEl.disabled = true;
+
+		if (this.plugin.settings.syncing) {
+			new Notice("新枝: 正在同步中, 将在本次同步完成后重试失败内容");
+		} else {
+			await this.plugin.sync();
+			await this.displayAsync();
+		}
+	}
+
+	private _createQrCodeElement(parentEl: HTMLElement, sessionId: string) {
+		const qrCodeValueDom = parentEl.createDiv({
+			cls: "newledge-qrcode-wrapper",
+		});
+		const canvas = qrCodeValueDom.createEl("canvas");
+
+		void QRCode.toCanvas(canvas, sessionId, {
 			width: 100,
 		});
 
@@ -266,7 +286,12 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 			const maxAttempts = 60;
 
 			const intervalId = this.plugin.registerInterval(
-				window.setInterval(async () => {
+				window.setInterval(() => {
+					void checkStatus();
+				}, 2000),
+			);
+
+			const checkStatus = async () => {
 					if (attempts >= maxAttempts) {
 						window.clearInterval(intervalId);
 						resolve({
@@ -301,13 +326,12 @@ export default class NewledgeSettingTab extends PluginSettingTab {
 							resolve(loginStatus);
 							return;
 						}
-					} catch (error) {
+					} catch (_error) {
 						// doNothing
 					}
 
 					attempts++;
-				}, 2000),
-			);
+			};
 		});
 	}
 

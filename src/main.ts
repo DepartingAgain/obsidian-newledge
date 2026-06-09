@@ -60,25 +60,34 @@ export default class Newledge extends Plugin {
 		this.settings.enable = true;
 		await this.saveSettings();
 
-		this.checkAccount().then(async ({ valid }) => {
-			if (valid) {
-				await this._initDir();
-
-				this.sync();
-
-				this.registerInterval(
-					window.setInterval(async () => {
-						await this._timingSync();
-					}, minute)
-				);
-			}
+		this.app.workspace.onLayoutReady(() => {
+			void this._initializeSync();
 		});
 	}
 
-	async onunload() {
+	onunload() {
 		this.settings.syncing = false;
 		this.settings.enable = false;
-		await this.saveSettings();
+		void this.saveSettings();
+	}
+
+	private async _initializeSync(): Promise<void> {
+		try {
+			const { valid } = await this.checkAccount();
+			if (valid) {
+				await this._initDir();
+
+				void this.sync();
+
+				this.registerInterval(
+					window.setInterval(() => {
+						void this._timingSync();
+					}, minute)
+				);
+			}
+		} catch (_error) {
+			// doNothing
+		}
 	}
 
 	async loadSettings() {
@@ -113,7 +122,7 @@ export default class Newledge extends Plugin {
 				);
 				integrationValid = integrationValidResponse.valid;
 				failedTaskCount = integrationValidResponse.failedTaskCount;
-			} catch (error) {
+			} catch (_error) {
 				return {
 					valid: false,
 					failedTaskCount: 0,
@@ -202,7 +211,7 @@ export default class Newledge extends Plugin {
 						} else {
 							break;
 						}
-					} catch (error) {
+					} catch (_error) {
 						failedCount++;
 					} finally {
 						await sleep(3000);
@@ -223,7 +232,7 @@ export default class Newledge extends Plugin {
 
 				new Notice(message);
 			}
-		} catch (error) {
+		} catch (_error) {
 			new Notice("新枝: 同步失败, 请稍后重试");
 		}
 
@@ -340,7 +349,7 @@ export default class Newledge extends Plugin {
 
 			try {
 				await syncSuccess(id, token);
-			} catch (error) {
+			} catch (_error) {
 				// doNothing
 			}
 
@@ -352,7 +361,7 @@ export default class Newledge extends Plugin {
 		} catch (error) {
 			try {
 				await syncFailed(id, token, error.toString());
-			} catch (error) {
+			} catch (_error) {
 				// doNothing
 			}
 			throw error;
@@ -362,9 +371,14 @@ export default class Newledge extends Plugin {
 	private _normalizeTitle(title: string) {
 		let sanitized = title
 			// 移除控制字符
-			.replace(/[\x00-\x1F\x7F-\x9F]/g, "")
+			.split("")
+			.filter((char) => {
+				const code = char.charCodeAt(0);
+				return code > 31 && (code < 127 || code > 159);
+			})
+			.join("")
 			// 替换Windows不允许的字符
-			.replace(/[<>:"\/\\|?*]/g, "_")
+			.replace(/[<>:"/\\|?*]/g, "_")
 			// 将多个空格替换为单个空格
 			.replace(/\s+/g, " ")
 			// 移除首尾空格
@@ -451,7 +465,7 @@ export default class Newledge extends Plugin {
 			if (sinceLastSyncMillisecond >= syncIntervalMillisecond) {
 				await this.sync();
 			}
-		} catch (error) {
+		} catch (_error) {
 			// doNothing
 		}
 	}

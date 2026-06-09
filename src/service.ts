@@ -51,32 +51,39 @@ export interface IntegrationResponse {
 }
 
 export async function getSessionId(): Promise<SessionIdResponse> {
-	const response = await request("GET", `${urlPrefix}/session-id`);
+	const response = await request<SessionIdResponse>(
+		"GET",
+		`${urlPrefix}/session-id`,
+	);
 	return response;
 }
 
 export async function getLoginStatus(sessionId: string): Promise<LoginStatus> {
-	const response = await request(
+	const response = await request<LoginStatus>(
 		"GET",
-		`${urlPrefix}/login-status?sessionId=${sessionId}`
+		`${urlPrefix}/login-status?sessionId=${sessionId}`,
 	);
 
 	return response;
 }
 
 export async function getSyncTask(token: string): Promise<SyncTaskResponse> {
-	const response = await request("GET", `${urlPrefix}/sync-task`, token);
+	const response = await request<SyncTaskResponse>(
+		"GET",
+		`${urlPrefix}/sync-task`,
+		token,
+	);
 	return response;
 }
 
 export async function getSyncContent(
 	id: string,
-	token: string
+	token: string,
 ): Promise<SyncContentResponse> {
-	const response = await request(
+	const response = await request<SyncContentResponse>(
 		"GET",
 		`${urlPrefix}/sync-content?id=${id}`,
-		token
+		token,
 	);
 	return response;
 }
@@ -90,7 +97,7 @@ export async function syncSuccess(id: string, token: string): Promise<void> {
 export async function syncFailed(
 	id: string,
 	token: string,
-	error: string
+	error: string,
 ): Promise<void> {
 	await request("PUT", `${urlPrefix}/sync-failed`, token, {
 		id,
@@ -104,12 +111,12 @@ export async function unbind(token: string): Promise<void> {
 
 export async function getIntegration(
 	sessionId: string,
-	token: string
+	token: string,
 ): Promise<IntegrationResponse> {
-	const response = await request(
+	const response = await request<IntegrationResponse>(
 		"GET",
 		`${urlPrefix}/integration?sessionId=${sessionId}`,
-		token
+		token,
 	);
 	return response;
 }
@@ -118,12 +125,14 @@ export async function retry(token: string): Promise<void> {
 	await request("PUT", `${urlPrefix}/retry`, token);
 }
 
-async function request(
+type RequestBody = Record<string, unknown>;
+
+async function request<T>(
 	method: string,
 	url: string,
 	token?: string,
-	body?: any
-) {
+	body?: RequestBody,
+): Promise<T> {
 	const headers: Record<string, string> = {};
 	if (token) {
 		headers["X-Obsidian-Token"] = token;
@@ -151,7 +160,10 @@ async function request(
 		throw new Error(response.status + " " + response.text);
 	}
 
-	const responseJson = response.json;
+	const responseJson = response.json as {
+		code: number;
+		data: T;
+	};
 
 	if (responseJson.code !== 1001) {
 		throw new Error(JSON.stringify(responseJson));
