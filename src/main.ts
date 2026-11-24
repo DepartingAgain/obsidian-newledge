@@ -60,6 +60,13 @@ export default class Newledge extends Plugin {
 		this.settings.enable = true;
 		await this.saveSettings();
 
+		// 无论是否已绑定都注册一次，首次绑定后无需重启插件。
+		this.registerInterval(
+			window.setInterval(() => {
+				void this._timingSync();
+			}, minute)
+		);
+
 		this.app.workspace.onLayoutReady(() => {
 			void this._initializeSync();
 		});
@@ -78,12 +85,6 @@ export default class Newledge extends Plugin {
 				await this._initDir();
 
 				void this.sync();
-
-				this.registerInterval(
-					window.setInterval(() => {
-						void this._timingSync();
-					}, minute)
-				);
 			}
 		} catch {
 			// doNothing
@@ -96,6 +97,11 @@ export default class Newledge extends Plugin {
 			DEFAULT_SETTINGS,
 			await this.loadData()
 		);
+		// JSON 持久化会将 Date 转成字符串。
+		const lastSyncTime = this.settings.lastSyncTime;
+		const restoredTime = lastSyncTime ? new Date(lastSyncTime) : null;
+		this.settings.lastSyncTime =
+			restoredTime && Number.isFinite(restoredTime.getTime()) ? restoredTime : null;
 	}
 
 	async saveSettings() {
@@ -452,8 +458,8 @@ export default class Newledge extends Plugin {
 
 	private async _timingSync() {
 		try {
-			const { lastSyncTime, syncInterval, syncing } = this.settings;
-			if (syncing) {
+			const { lastSyncTime, syncInterval, syncing, token, enable } = this.settings;
+			if (!token || !enable || syncing) {
 				return;
 			}
 
